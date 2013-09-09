@@ -642,4 +642,25 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 
 }
 
+\lithium\util\Collection::formats('tree', function($data, $options = array()) {
+    $defaults = array('left' => 'lft', 'right' => 'rght', 'parent' => 'parent_id', 'children' => 'children');
+    $options += $defaults;
+    if ((!is_object($data)) && (!is_a($data, 'lithium\util\Collection'))) {
+        $data = new \lithium\util\Collection(compact('data'));
+    }
+    $data->sort($options['left']);
+    $root = $data->current();
+    $refs = array();
+    while ($data->valid()) {
+        $node = $data->current();
+        $node->{$options['children']} = array();
+        $refs[$node->id] = $node;
+        if (isset($refs[$node->{$options['parent']}])) {
+            $refs[$node->{$options['parent']}]->{$options['children']}[] = $node;
+        }
+        $data->next();
+    }
+    return $root;
+});
+
 ?>
