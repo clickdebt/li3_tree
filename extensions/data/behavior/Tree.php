@@ -653,7 +653,7 @@ class Tree extends \li3_behaviors\data\model\Behavior {
     $refs = array();
     while ($data->valid()) {
         $node = $data->current();
-        $node->{$options['children']} = array();
+        $node->{$options['children']} = new \lithium\util\Collection();
         $refs[$node->id] = $node;
         if (isset($refs[$node->{$options['parent']}])) {
             $refs[$node->{$options['parent']}]->{$options['children']}[] = $node;
