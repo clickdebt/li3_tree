@@ -126,13 +126,14 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	 *
 	 * @param object $entity
 	 */
-	public function path($entity) {
+	public function path($entity, $params = array()) {
 		extract($this->_config);
 
 		$data = [];
 		while ($entity->data($parent) !== null) {
 			$data[] = $entity;
-			$entity = $this->_getById($entity->$parent);
+			$getOptions = isset($params['getOptions']) ? $params['getOptions'] : array();
+			$entity = $this->_getById($entity->$parent, $getOptions);
 		}
 		$data[] = $entity;
 		$data = array_reverse($data);
@@ -358,9 +359,14 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	 *
 	 * @param integer $id the id to fetch from db
 	 */
-	protected function _getById($id) {
+	protected function _getById($id, $params = array()) {
 		$model = $this->_config['model'];
-		return $model::find('first', ['conditions' => [$model::key() => $id]]);
+		$conditions = array($model::key() => $id);
+		if (isset($params['conditions'])) {
+			$params['conditions'] = $params['conditions'] + $conditions;
+		}
+		$options = $params + array('conditions' => $conditions);
+		return $model::find('first', $options);
 	}
 
 	/**
@@ -648,7 +654,7 @@ class Tree extends \li3_behaviors\data\model\Behavior {
     if ((!is_object($data)) && (!is_a($data, 'lithium\util\Collection'))) {
         $data = new \lithium\util\Collection(compact('data'));
     }
-    $data->sort($options['left']);
+	$data->rewind();
     $root = $data->current();
     $refs = array();
     while ($data->valid()) {
