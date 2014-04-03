@@ -366,7 +366,8 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 			$params['conditions'] = $params['conditions'] + $conditions;
 		}
 		$options = $params + array('conditions' => $conditions);
-		return $model::find('first', $options);
+		$result = $model::find('all', $options);
+		return $result->first();
 	}
 
 	/**
