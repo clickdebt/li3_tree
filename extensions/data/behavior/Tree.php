@@ -12,55 +12,35 @@ use lithium\core\ConfigException;
 use UnexpectedValueException;
 
 class Tree extends \li3_behaviors\data\model\Behavior {
-
+	
 	/**
 	 * Default tree configuration
 	 *
 	 * @var array
 	 */
-	protected $_defaults = [
+	protected static $_defaults = [
 		'parent' => 'parent_id',
 		'left' => 'lft',
 		'right' => 'rght',
 		'recursive' => false,
 		'scope' => []
 	];
-
-	/**
-	 * Constructor
-	 *
-	 * @param array $config The configuration array
-	 */
-	public function __construct($config = []){
-		parent::__construct($config + $this->_defaults);
-	}
-
-	/**
-	 * Initializer function called by the constructor unless the constructor `'init'` flag is set
-	 * to `false`.
-	 *
-	 * @see lithium\core\Object
-	 * @throws ConfigException
-	 */
-	public function _init() {
-		parent::_init();
-		if (!$model = $this->_model) {
-			throw new ConfigException("`'model'` option needs to be defined.");
-		}
-		$behavior = $this;
-		$model::applyFilter('save', function($self, $params, $chain) use ($behavior) {
-			if ($behavior->invokeMethod('_beforeSave', [$params])) {
+	
+	protected static function _filters($model, $behavior)
+	{
+        $model::applyFilter('save', function($self, $params, $chain) use ($behavior) {
+			if (static::_save($params, $behavior)) {
 				return $chain->next($self, $params, $chain);
 			}
 		});
-
-		$model::applyFilter('delete', function($self, $params, $chain) use ($behavior) {
-			if ($behavior->invokeMethod('_beforeDelete', [$params])) {
+        
+        $model::applyFilter('delete', function($self, $params, $chain) use ($behavior) {
+			if (static::_delete($params, $behavior)) {
 				return $chain->next($self, $params, $chain);
 			}
 		});
 	}
-
+	
 	/**
 	 * Setting a scope to an entity node.
 	 *
@@ -126,7 +106,7 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	 *
 	 * @param object $entity
 	 */
-	public function path($entity, $params = array()) {
+	public function path($model, $behavior, $entity, $params = array()) {
 		extract($this->_config);
 
 		$data = [];
@@ -193,7 +173,7 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	 *
 	 * @param array $params
 	 */
-	protected function _beforeSave($params) {
+	protected static function _save($params, $behavior) {
 		extract($this->_config);
 		$entity = $params['entity'];
 
@@ -227,11 +207,11 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	/**
 	 * Before delete
 	 *
-	 * this method is called befor each save
+	 * this method is called befor each delete
 	 *
 	 * @param array $params
 	 */
-	protected function _beforeDelete($params) {
+	protected static function _delete($params, $behavior) {
 		return $this->_deleteFromTree($params['entity']);
 	}
 
