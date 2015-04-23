@@ -174,6 +174,11 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	 * @param array $params
 	 */
 	protected static function _save($params, $behavior) {
+		//calling the new _save experiment
+		static::_saveNew($params, $behavior);
+		return true;
+		
+		
 		extract($this->_config);
 		$entity = $params['entity'];
 
@@ -627,6 +632,110 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 		return true;
 	}
 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	/**
+	 * Experiments to fix the _save behaviour
+	 */
+	private static function _getScope($entity, $behavior) {
+		$ret_scope = [];
+		
+		if(isset($behavior->_config['scope'])) {
+			foreach($behavior->_config['scope'] as $scope) {
+				$ret_scope[$scope] = $entity->{$scope};
+			}
+		}
+		
+		return $ret_scope;
+	}
+
+	private static function _findParent($id, $behavior, $scope) {
+		$model = $behavior->_config['model'];
+
+		$parent = $model::find('first', [
+			'conditions' => [
+				$model::key() => $id,
+				$scope
+			]
+		]);
+
+		return $parent->data();
+	}
+
+	private static function _updateParent($id, $behavior, $scope, $right) {
+		$model = $behavior->_config['model'];
+
+		$parent = $model::find('first', [
+			'conditions' => [
+				$model::key() => $id,
+				$scope
+			]
+		]);
+
+		$update_data[$behavior->_config['right']] = $right + 1;
+		$parent->set($update_data);
+		$parent->save();
+	}
+
+	private static function _calculateMaster($entity_data, $behavior) {
+		$left = ((isset($entity_data[$behavior->_config['left']]) && $entity_data[$behavior->_config['left']] > 0) ? $entity_data[$behavior->_config['left']] : 1);
+		$right = ((isset($entity_data[$behavior->_config['right']]) && $entity_data[$behavior->_config['right']] > 0) ? $entity_data[$behavior->_config['right']] : 2);
+
+		return [
+			$left,
+			$right
+		];
+	}
+
+	private static function _saveNew($params, $behavior) {
+		$entity = $params['entity'];
+		
+		$scope = static::_getScope($entity, $behavior);
+
+		$entity_data = $entity->data();
+
+		if(isset($entity_data['parent_id']) && $entity_data['parent_id'] !== null) {
+			$parent_data = static::_findParent($entity_data['parent_id'], $behavior, $scope);
+			if($entity->exists()) {
+				$left = $entity_data[$behavior->_config['left']];
+				$right = $entity_data[$behavior->_config['right']];
+			}
+			else {
+				$left = $parent_data[$behavior->_config['right']];
+				$right = $parent_data[$behavior->_config['right']] + 1;
+			}
+			static::_updateParent($entity_data['parent_id'], $behavior, $scope, $right);
+		}
+		else {
+			list($left, $right) = static::_calculateMaster($entity_data, $behavior);
+		}
+
+		$entity_data[$behavior->_config['left']] = $left;
+		$entity_data[$behavior->_config['right']] = $right;
+		$entity->set($entity_data);
+
+		return true;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
 }
 
 \lithium\util\Collection::formats('tree', function($data, $options = array()) {
