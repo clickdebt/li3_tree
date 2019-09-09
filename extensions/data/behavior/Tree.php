@@ -704,8 +704,7 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 		$scope = static::_getScope($entity, $behavior);
 
 		$entity_data = $entity->data();
-
-		if(isset($entity_data['parent_id']) && $entity_data['parent_id'] !== null) {
+		if(isset($entity_data['parent_id']) && !empty($entity_data['parent_id'])) {
 			$parent_data = static::_findParent($entity_data['parent_id'], $behavior, $scope);
 			if($entity->exists()) {
 				$left = $entity_data[$behavior->_config['left']];
@@ -719,8 +718,9 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 		}
 		else {
 			list($left, $right) = static::_calculateMaster($entity_data, $behavior);
+                        $entity_data['parent_id'] = null;
 		}
-
+                
 		$entity_data[$behavior->_config['left']] = $left;
 		$entity_data[$behavior->_config['right']] = $right;
 		$entity->set($entity_data);
