@@ -19,7 +19,7 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	 *
 	 * @var array
 	 */
-	protected $_defaults = [
+	protected static $_defaults = [
 		'parent' => 'parent_id',
 		'left' => 'lft',
 		'right' => 'rght',
