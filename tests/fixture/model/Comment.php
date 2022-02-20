@@ -15,5 +15,5 @@ class Comment extends \lithium\data\Model {
 
 	public $belongsTo = ['Image'];
 
-	protected static $_actsAs = ['Tree'];
+	protected $_actsAs = ['Tree'];
 }
