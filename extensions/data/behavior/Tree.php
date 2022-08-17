@@ -8,6 +8,7 @@
 
 namespace li3_tree\extensions\data\behavior;
 
+use lithium\aop\Filters;
 use lithium\core\ConfigException;
 use UnexpectedValueException;
 
@@ -28,17 +29,16 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 	
 	protected static function _filters($model, $behavior)
 	{
-        $model::applyFilter('save', function($self, $params, $chain) use ($behavior) {
-			if (static::_save($params, $behavior)) {
-				return $chain->next($self, $params, $chain);
+        Filters::apply($model, 'save', function($params, $next) use ($behavior) {
+            if (static::_save($params, $behavior)) {
+                return $next($params);
 			}
-		});
-        
-        $model::applyFilter('delete', function($self, $params, $chain) use ($behavior) {
-			if (static::_delete($params, $behavior)) {
-				return $chain->next($self, $params, $chain);
+        });
+		Filters::apply($model, 'delete', function($params, $next) use ($behavior) {
+            if (static::_delete($params, $behavior)) {
+                return $next($params);
 			}
-		});
+        });
 	}
 	
 	/**
