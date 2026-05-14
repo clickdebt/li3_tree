@@ -660,32 +660,66 @@ class Tree extends \li3_behaviors\data\model\Behavior {
 		return $ret_scope;
 	}
 
+	/**
+	 * Get the parent row.
+	 *
+	 * This only reads from the DB, it does NOT call save() on anything,
+	 * so it is safe to use inside the save filter. Do not change this to
+	 * load an entity and update it — see the note on _updateParent() below
+	 * for why that breaks things.
+	 */
 	private static function _findParent($id, $behavior, $scope) {
 		$model = $behavior->_config['model'];
 
 		$parent = $model::find('first', [
-			'conditions' => [
-				$model::key() => $id,
-				$scope
-			]
+			'conditions' => [$model::key() => $id] + $scope
 		]);
 
 		return $parent->data();
 	}
 
+	/**
+	 * Update the parent row's right value by 1 when a new child is added.
+	 *
+	 * Why this looks the way it does:
+	 *
+	 * When we run the credit_control installer, it starts from
+	 * FinancialConfigInstaller.php and then calls BucketPrototypeInstaller.php.
+	 * BucketPrototypeInstaller has a big nested array of buckets (parent -> child
+	 * -> child...) and it loops through them and calls save() on each one.
+	 *
+	 * Every save() goes through the save filter in this Tree behavior, which
+	 * ends up calling _saveNew(), which then calls this _updateParent() to fix
+	 * the parent's right value.
+	 *
+	 * The old code here was loading the parent as an entity and calling
+	 * $parent->save() on it to update the right value. The problem is, we are
+	 * already inside the save filter for the child, and calling save() again
+	 * runs the same filter again on top of itself. Lithium's filter chain is
+	 * not built to handle this — it gets confused, loses track of where it is,
+	 * and ends up trying to call a function that is null. PHP 8 then throws
+	 * "Value of type null is not callable" and the whole page goes blank.
+	 *
+	 * That blank screen is exactly what we were seeing when opening the
+	 * installer.
+	 *
+	 * The fix: don't load an entity and don't call save() here. Just run a
+	 * plain UPDATE query using $model::update(). That does not trigger the
+	 * save filter, so the filter chain we are already in stays clean, and
+	 * the installer runs fine.
+	 *
+	 * Please do NOT change this back to $entity->save(). If you do, run the
+	 * credit_control installer and you will see the blank page come back.
+	 */
 	private static function _updateParent($id, $behavior, $scope, $right) {
 		$model = $behavior->_config['model'];
 
-		$parent = $model::find('first', [
-			'conditions' => [
-				$model::key() => $id,
-				$scope
-			]
-		]);
-
-		$update_data[$behavior->_config['right']] = $right + 1;
-		$parent->set($update_data);
-		$parent->save();
+		// Plain UPDATE — does not go through save(), so it does not trigger
+		// the save filter again. See the comment above for why this matters.
+		$model::update(
+			[$behavior->_config['right'] => $right + 1],
+			[$model::key() => $id]
+		);
 	}
 
 	private static function _calculateMaster($entity_data, $behavior) {
